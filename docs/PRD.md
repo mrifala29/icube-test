@@ -265,6 +265,29 @@ kubectl apply -f kubernetes/app/         # Magento Deployment, Service, Ingress
 kubectl apply -f kubernetes/addons/      # Bonus: HPA, PDB, NetworkPolicy
 ```
 
+#### Rincian Fungsi & Anatomi Direktori `kubernetes/`
+Seluruh manifest Kubernetes dirancang secara modular dan terstruktur dalam 4 lapis direktori berdasarkan fungsinya (Layered K8s Architecture) untuk memudahkan manajemen, scaling, serta migrasi ke cloud production (seperti AWS EKS):
+
+| Direktori / File Manifest | Jenis Resource | Detail Fungsi & Alasan Desain (Bahan Presentasi) |
+|---|---|---|
+| **`kubernetes/base/`** | **Pondasi Cluster** | **Lapisan dasar penunjang infrastruktur aplikasi sebelum workload dijalankan.** |
+| ├── `namespace.yaml` | `Namespace` | Membuat ruang lingkup terisolasi (`magento`) agar pod dan service tidak tercampur dengan sistem K8s lain. |
+| ├── `configmap.yaml` | `ConfigMap` | Menyimpan konfigurasi non-sensitif (DB Host, Port, mode aplikasi `production`, alamat Redis) secara terpusat agar mudah diubah tanpa me-rebuild docker image. |
+| ├── `secret.example.yaml` | `Secret` (Template) | Template kredensial kosong yang aman di-push ke Git sebagai panduan/referensi tim DevOps. |
+| ├── `secret.yaml` | `Secret` (Active) | Menyimpan password rill database & admin Magento secara terenkripsi. File ini dimasukkan ke dalam `.gitignore` agar tidak bocor ke publik. |
+| └── `pvc.yaml` | `PersistentVolumeClaim` | Meminta alokasi hard disk virtual (masing-masing 5GB) untuk MySQL, OpenSearch, dan folder foto produk Magento (`pub/media`). Khusus media menggunakan mode `ReadWriteMany` agar bisa diakses bersama oleh multi-replika Magento web. |
+| **`kubernetes/datastore/`** | **Engine Data** | **Lapisan penyimpan data (Stateful Workload) yang dikonfigurasi khusus agar ramah RAM pada server lab 4GB.** |
+| ├── `database.yaml` | `StatefulSet`, `Service` | Mendeploy MySQL 8.0. Menggunakan **StatefulSet** agar identitas pod & data tetap ada saat restart. Dilengkapi tuning RAM maksimal 512MB (`--innodb-buffer-pool-size=256M`) dan *Liveness/Readiness Probe* untuk auto-healing. |
+| ├── `search-engine.yaml` | `StatefulSet`, `Service` | Mendeploy OpenSearch 2.12 (wajib untuk katalog Magento 2.4+). Dikonfigurasi dengan Java Heap tepat 512MB (`-Xms512m -Xmx512m`) agar tidak OOMKilled, serta dilengkapi `initContainers` untuk auto-fix permission folder. |
+| └── `redis.yaml` | `Deployment`, `Service` | **[Bonus #2]** Mendeploy Redis Cache super ringan (RAM limit 128MB). Sangat penting untuk menyimpan session login dan cache agar saat Magento di-scale ke 2 replika, user tidak ter-logout otomatis. |
+| **`kubernetes/app/`** | **Aplikasi Web** | **[Dikerjakan di Tahap 3] Lapisan aplikasi utama Magento E-Commerce & Routing Publik.** |
+| ├── `magento.yaml` | `Deployment` | Mendeploy kontainer Magento (Nginx web server + PHP-FPM jalan bersamaan dalam 1 pod). Didesain *stateless* agar mudah di-scale out/in. |
+| ├── `service.yaml` | `Service (ClusterIP)` | Menyediakan IP internal dan DNS lokal (`magento-web.magento.svc`) agar bisa menerima trafik dari Ingress Controller. |
+| └── `ingress.yaml` | `Ingress` | Aturan gerbang depan cluster yang menghubungkan domain publik dari Nginx Host/Cloudflare (HTTPS) ke pod Magento secara aman. |
+| **`kubernetes/addons/`** | **Advanced Features** | **[Dikerjakan di Tahap 4] Lapisan peningkatan reliabilitas, otomatisasi, dan keamanan siber.** |
+| ├── `hpa-pdb.yaml` | `HPA`, `PDB` | **[Bonus #3 & #4]** *Horizontal Pod Autoscaler* untuk menambah pod otomatis saat traffic naik, dan *Pod Disruption Budget* untuk menjaga pod minimal tetap hidup saat maintenance cluster. |
+| └── `network-policy.yaml` | `NetworkPolicy` | **[Bonus #5]** Zero-Trust Firewall K8s yang memblokir semua akses jaringan ilegal ke MySQL dan OpenSearch, kecuali yang berasal dari pod Magento resmi. |
+
 **Perbedaan kecil saat pindah ke EKS:**
 
 | Aspek | Minikube | EKS |

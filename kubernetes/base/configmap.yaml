@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: magento-config
+  namespace: magento
+  labels:
+    app: magento
+    environment: dev
+data:
+  # Database Configuration
+  DB_HOST: "mysql.magento.svc.cluster.local"
+  DB_PORT: "3306"
+  DB_NAME: "magento"
+
+  # Search Engine Configuration
+  OPENSEARCH_HOST: "opensearch.magento.svc.cluster.local"
+  OPENSEARCH_PORT: "9200"
+
+  # Redis Configuration (Bonus #2)
+  REDIS_HOST: "redis.magento.svc.cluster.local"
+  REDIS_PORT: "6379"
+  REDIS_DB: "0"
+
+  # Magento Application Mode & Paths
+  MAGE_MODE: "production"
+  MAGENTO_ADMIN_PATH: "icube-admin"
+  MAGENTO_BASE_URL: "https://172.104.62.55/"

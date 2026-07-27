@@ -1,0 +1,44 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-pvc
+  namespace: magento
+  labels:
+    app: mysql
+    environment: dev
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: opensearch-pvc
+  namespace: magento
+  labels:
+    app: opensearch
+    environment: dev
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: magento-media-pvc
+  namespace: magento
+  labels:
+    app: magento
+    environment: dev
+spec:
+  accessModes:
+    - ReadWriteMany  # Enables sharing media across multiple Magento web replicas
+  resources:
+    requests:
+      storage: 5Gi
