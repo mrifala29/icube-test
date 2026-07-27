@@ -38,11 +38,11 @@
     dest: /etc/profile.d/k8s-env.sh
     mode: '0755'
 
-- name: Check Minikube cluster status
-  ansible.builtin.command: minikube status
-  register: minikube_status_check
+# Cleanup stale/broken cluster before starting fresh
+- name: Delete any existing broken Minikube cluster (cleanup)
+  ansible.builtin.command: minikube delete --all --purge
   failed_when: false
-  changed_when: false
+  changed_when: true
 
 - name: Initialize and start Minikube cluster inside Docker
   ansible.builtin.command: >
@@ -51,7 +51,6 @@
     --cpus={{ minikube_cpus }}
     --memory={{ minikube_memory }}
     --force
-  when: minikube_status_check.rc != 0
 
 - name: Enable required Minikube addons
   ansible.builtin.command: "minikube addons enable {{ item }}"
