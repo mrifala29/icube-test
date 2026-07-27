@@ -1,0 +1,26 @@
+# --- Agents ---
+.agents/
+
+# --- Docs ---
+docs/sample-prd*
+docs/*.pdf
+
+# --- Server Access ---
+ssh/
+
+# --- Security & Credentials ---
+ssh/sk
+
+# --- Ansible Secrets & Logs ---
+ansible/inventories/dev/group_vars/
+ansible/ansible.cfg
+
+# --- Database Dumps & Backups ---
+*.sql
+*.tar.gz
+
+# --- OS & IDE ---
+.DS_Store
+.vscode/
+.idea/
+*.swp
