@@ -172,17 +172,12 @@ Struktur direktori dirancang rapi dengan pemisahan `inventories`, `group_vars`, 
 ansible/
 ├── ansible.cfg                         # SSH key path, remote user, pipelining=true
 ├── inventories/
-│   ├── dev/                            # Environment Dev Assessment
+│   └── dev/                            # Environment Dev Assessment
 │   │   ├── hosts.ini                   # [dev_server] root@172.104.62.55
 │   │   └── group_vars/
 │   │       └── all.yml                 # Global vars (minikube_cpus, domain, ports)
-│   └── prod/                           # Blueprint untuk future staging/prod
-│       ├── hosts.ini
-│       └── group_vars/
-│           └── all.yml
 ├── playbooks/
-│   ├── setup_dev.yml                   # Entrypoint utama untuk Environment Dev
-│   └── setup_prod.yml                  # Entrypoint utama untuk Production (future)
+│   └── setup_dev.yml                   # Entrypoint utama untuk Environment Dev
 └── roles/
     ├── base/
     │   ├── common/                     # Basic tools (git, curl, jq, htop, k9s)

@@ -1,0 +1,8 @@
+services:
+  nginx:
+    image: {{ nginx_image_version }}
+    container_name: nginx_reverse_proxy
+    restart: always
+    network_mode: "host"
+    volumes:
+      - ./conf.d:/etc/nginx/conf.d:ro

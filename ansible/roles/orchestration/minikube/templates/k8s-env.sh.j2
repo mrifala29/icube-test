@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Kubernetes profile configuration and shortcuts
+export MINIKUBE_HOME=$HOME
+export KUBECONFIG=$HOME/.kube/config
+
+# Shortcuts and aliases
+alias k="kubectl"
+alias m="minikube"
+alias kgp="kubectl get pods"
+alias kgs="kubectl get svc"
+alias kgn="kubectl get nodes"
+alias kga="kubectl get all -A"
+
+# Auto-completion setup
+if command -v kubectl &> /dev/null; then
+  source <(kubectl completion bash)
+  complete -F __start_kubectl k
+fi
+
+if command -v minikube &> /dev/null; then
+  source <(minikube completion bash)
+  complete -F __start_minikube m
+fi
+
+if command -v helm &> /dev/null; then
+  source <(helm completion bash)
+fi

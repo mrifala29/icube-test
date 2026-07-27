@@ -1,0 +1,60 @@
+---
+- name: Configure Linux kernel sysctl parameters for Kubernetes
+  ansible.posix.sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    state: present
+    reload: true
+    sysctl_file: /etc/sysctl.d/99-kubernetes-node.conf
+  loop:
+    - { name: 'fs.inotify.max_user_watches', value: '524288' }
+    - { name: 'fs.inotify.max_user_instances', value: '8192' }
+    - { name: 'net.ipv4.ip_forward', value: '1' }
+
+- name: Download and install kubectl CLI
+  ansible.builtin.get_url:
+    url: "https://dl.k8s.io/release/{{ kubectl_version }}/bin/linux/amd64/kubectl"
+    dest: /usr/local/bin/kubectl
+    mode: '0755'
+
+- name: Download and install Minikube binary
+  ansible.builtin.get_url:
+    url: "https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64"
+    dest: /usr/local/bin/minikube
+    mode: '0755'
+
+- name: Download and install Helm CLI script
+  ansible.builtin.shell: |
+    curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+    chmod 700 get_helm.sh
+    ./get_helm.sh --version {{ helm_version }}
+    rm -f get_helm.sh
+  args:
+    creates: /usr/local/bin/helm
+
+- name: Deploy Kubernetes profile aliases and bash auto-completion script
+  ansible.builtin.template:
+    src: k8s-env.sh.j2
+    dest: /etc/profile.d/k8s-env.sh
+    mode: '0755'
+
+- name: Check Minikube cluster status
+  ansible.builtin.command: minikube status
+  register: minikube_status_check
+  failed_when: false
+  changed_when: false
+
+- name: Initialize and start Minikube cluster inside Docker
+  ansible.builtin.command: >
+    minikube start
+    --driver={{ minikube_driver }}
+    --cpus={{ minikube_cpus }}
+    --memory={{ minikube_memory }}
+    --force
+  when: minikube_status_check.rc != 0
+
+- name: Enable required Minikube addons
+  ansible.builtin.command: "minikube addons enable {{ item }}"
+  loop: "{{ minikube_addons }}"
+  register: addon_enable
+  changed_when: "'enabled' in addon_enable.stdout"

@@ -1,0 +1,64 @@
+---
+- name: Update apt package cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Install essential debugging and networking tools
+  ansible.builtin.apt:
+    name:
+      - git
+      - curl
+      - wget
+      - vim
+      - htop
+      - jq
+      - unzip
+      - dnsutils
+      - net-tools
+      - ufw
+      - ca-certificates
+      - gnupg
+      - lsb-release
+      - apt-transport-https
+      - software-properties-common
+    state: present
+
+- name: Check if k9s binary is installed
+  ansible.builtin.stat:
+    path: /usr/local/bin/k9s
+  register: k9s_stat
+
+- name: Get latest k9s release tag from GitHub API
+  ansible.builtin.uri:
+    url: https://api.github.com/repos/derailed/k9s/releases/latest
+    return_content: true
+  register: k9s_release
+  when: not k9s_stat.stat.exists
+  ignore_errors: true
+
+- name: Download and install k9s binary from GitHub releases
+  ansible.builtin.unarchive:
+    src: "https://github.com/derailed/k9s/releases/download/{{ k9s_release.json.tag_name }}/k9s_Linux_amd64.tar.gz"
+    dest: /usr/local/bin/
+    remote_src: true
+    mode: '0755'
+    extra_opts:
+      - k9s
+  when: not k9s_stat.stat.exists and k9s_release.status is defined and k9s_release.status == 200
+
+- name: Ensure basic security hardening (UFW default policies)
+  ansible.builtin.ufw:
+    state: enabled
+    policy: deny
+    direction: incoming
+
+- name: Allow SSH, HTTP, and HTTPS traffic through UFW
+  ansible.builtin.ufw:
+    rule: allow
+    port: "{{ item }}"
+    proto: tcp
+  loop:
+    - "22"
+    - "80"
+    - "443"

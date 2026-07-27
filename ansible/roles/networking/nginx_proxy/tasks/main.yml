@@ -1,0 +1,39 @@
+---
+- name: Get dynamic Minikube cluster IP
+  ansible.builtin.command: minikube ip
+  register: get_minikube_ip
+  changed_when: false
+  failed_when: false
+
+- name: Set dynamic minikube_ip fact if Minikube is running
+  ansible.builtin.set_fact:
+    minikube_ip: "{{ get_minikube_ip.stdout }}"
+  when: get_minikube_ip.rc == 0 and get_minikube_ip.stdout != ""
+
+- name: Ensure Nginx reverse proxy configuration directory exists
+  ansible.builtin.file:
+    path: "{{ nginx_proxy_dir }}/conf.d"
+    state: directory
+    mode: '0755'
+    recurse: true
+
+- name: Template out Docker Compose configuration for Nginx reverse proxy
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ nginx_proxy_dir }}/docker-compose.yml"
+    mode: '0644'
+  notify: Restart Nginx Docker Container
+
+- name: Template out Nginx Magento reverse proxy configuration
+  ansible.builtin.template:
+    src: nginx-magento.conf.j2
+    dest: "{{ nginx_proxy_dir }}/conf.d/default.conf"
+    mode: '0644'
+  notify: Reload Nginx Docker Container
+
+- name: Ensure Nginx reverse proxy Docker container is started
+  ansible.builtin.command: docker compose up -d
+  args:
+    chdir: "{{ nginx_proxy_dir }}"
+  register: compose_up
+  changed_when: "'Started' in compose_up.stdout or 'Created' in compose_up.stdout"

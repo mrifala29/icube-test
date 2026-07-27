@@ -1,0 +1,7 @@
+---
+nginx_proxy_dir: /opt/nginx_proxy
+nginx_image_version: "nginx:alpine"
+nginx_http_port: 80
+nginx_https_port: 443
+minikube_ip: "192.168.49.2" # Default minikube docker driver IP
+nodeport_http: 30080 # NodePort untuk Ingress Controller HTTP

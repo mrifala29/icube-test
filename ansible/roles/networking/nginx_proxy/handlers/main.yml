@@ -1,0 +1,11 @@
+---
+- name: Restart Nginx Docker Container
+  ansible.builtin.command: docker compose restart
+  args:
+    chdir: "{{ nginx_proxy_dir }}"
+
+- name: Reload Nginx Docker Container
+  ansible.builtin.command: docker compose exec -T nginx nginx -s reload
+  args:
+    chdir: "{{ nginx_proxy_dir }}"
+  ignore_errors: true

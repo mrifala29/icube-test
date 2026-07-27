@@ -1,0 +1,23 @@
+---
+- name: Setup Base OS Requirements & Tools
+  hosts: dev_server
+  become: true
+  roles:
+    - role: base/common
+      tags: ['base', 'common']
+    - role: base/docker
+      tags: ['base', 'docker']
+
+- name: Setup Kubernetes Cluster (Minikube & Tools)
+  hosts: dev_server
+  become: true
+  roles:
+    - role: orchestration/minikube
+      tags: ['orchestration', 'minikube', 'k8s']
+
+- name: Setup Networking & Reverse Proxy
+  hosts: dev_server
+  become: true
+  roles:
+    - role: networking/nginx_proxy
+      tags: ['networking', 'proxy', 'nginx']
