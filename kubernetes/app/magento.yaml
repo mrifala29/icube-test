@@ -1,0 +1,140 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: magento-web
+  namespace: magento
+  labels:
+    app: magento
+    tier: frontend
+    environment: dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: magento
+      tier: frontend
+  template:
+    metadata:
+      labels:
+        app: magento
+        tier: frontend
+    spec:
+      containers:
+        - name: magento
+          image: ghcr.io/alexcheng1982/docker-magento2:2.4.6-p3
+          ports:
+            - containerPort: 80
+              name: http
+            - containerPort: 443
+              name: https
+          env:
+            # App mode
+            - name: MAGENTO_MODE
+              valueFrom:
+                configMapKeyRef:
+                  name: magento-config
+                  key: MAGE_MODE
+            - name: MAGENTO_HOST
+              value: "gadgetbekassidoarjo.my.id"
+            - name: MAGENTO_ENABLE_HTTPS
+              value: "no"
+            - name: MAGENTO_ENABLE_ADMIN_HTTPS
+              value: "no"
+            - name: MAGENTO_ADMIN_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: magento-config
+                  key: MAGENTO_ADMIN_PATH
+            # Admin user
+            - name: MAGENTO_ADMIN_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: magento-secrets
+                  key: MAGENTO_ADMIN_USER
+            - name: MAGENTO_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: magento-secrets
+                  key: MAGENTO_ADMIN_PASSWORD
+            - name: MAGENTO_ADMIN_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: magento-secrets
+                  key: MAGENTO_ADMIN_EMAIL
+            - name: MAGENTO_ADMIN_FIRSTNAME
+              valueFrom:
+                secretKeyRef:
+                  name: magento-secrets
+                  key: MAGENTO_ADMIN_FIRSTNAME
+            - name: MAGENTO_ADMIN_LASTNAME
+              valueFrom:
+                secretKeyRef:
+                  name: magento-secrets
+                  key: MAGENTO_ADMIN_LASTNAME
+            # DB connection
+            - name: MAGENTO_DATABASE_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: magento-config
+                  key: DB_HOST
+            - name: MAGENTO_DATABASE_PORT_NUMBER
+              valueFrom:
+                configMapKeyRef:
+                  name: magento-config
+                  key: DB_PORT
+            - name: MAGENTO_DATABASE_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: magento-config
+                  key: DB_NAME
+            - name: MAGENTO_DATABASE_USER
+              valueFrom:
+                secretKeyRef:
+                  name: magento-secrets
+                  key: DB_USER
+            - name: MAGENTO_DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: magento-secrets
+                  key: DB_PASSWORD
+            # OpenSearch connection
+            - name: MAGENTO_ELASTICSEARCH_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: magento-config
+                  key: OPENSEARCH_HOST
+            - name: MAGENTO_ELASTICSEARCH_PORT_NUMBER
+              valueFrom:
+                configMapKeyRef:
+                  name: magento-config
+                  key: OPENSEARCH_PORT
+            - name: MAGENTO_ELASTICSEARCH_ENABLE_SECURITY
+              value: "no"
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1280Mi"
+          livenessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 120
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 6
+          readinessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          volumeMounts:
+            - name: magento-media
+              mountPath: /bitnami/magento/pub/media
+      volumes:
+        - name: magento-media
+          persistentVolumeClaim:
+            claimName: magento-media-pvc
