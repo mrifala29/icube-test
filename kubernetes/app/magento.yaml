@@ -119,21 +119,21 @@ spec:
               memory: "1280Mi"
           livenessProbe:
             tcpSocket:
-              port: 8080
+              port: 80
             initialDelaySeconds: 120
             periodSeconds: 20
             timeoutSeconds: 5
             failureThreshold: 6
           readinessProbe:
             tcpSocket:
-              port: 8080
+              port: 80
             initialDelaySeconds: 60
             periodSeconds: 10
             timeoutSeconds: 5
             failureThreshold: 6
           volumeMounts:
             - name: magento-media
-              mountPath: /bitnami/magento/pub/media
+              mountPath: /var/www/html/pub/media
       volumes:
         - name: magento-media
           persistentVolumeClaim:
