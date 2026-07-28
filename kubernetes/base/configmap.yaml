@@ -23,5 +23,5 @@ data:
 
   # Magento Application Mode & Paths
   MAGE_MODE: "production"
-  MAGENTO_ADMIN_PATH: "icube-admin"
+  MAGENTO_ADMIN_PATH: "icube_admin"
   MAGENTO_BASE_URL: "https://gadgetbekassidoarjo.my.id/"

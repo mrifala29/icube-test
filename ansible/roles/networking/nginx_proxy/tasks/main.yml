@@ -10,6 +10,15 @@
     minikube_ip: "{{ get_minikube_ip.stdout }}"
   when: get_minikube_ip.rc == 0 and get_minikube_ip.stdout != ""
 
+- name: Wait for Ingress Controller service to be created
+  ansible.builtin.command: kubectl get svc -n ingress-nginx ingress-nginx-controller
+  register: wait_ingress_svc
+  until: wait_ingress_svc.rc == 0
+  retries: 12
+  delay: 5
+  changed_when: false
+  failed_when: false
+
 - name: Get dynamic Ingress Controller NodePort HTTP
   ansible.builtin.command: kubectl get svc -n ingress-nginx ingress-nginx-controller -o jsonpath='{.spec.ports[?(@.name=="http")].nodePort}'
   register: get_ingress_nodeport

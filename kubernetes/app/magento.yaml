@@ -19,6 +19,147 @@ spec:
         app: magento
         tier: frontend
     spec:
+      initContainers:
+        - name: magento-install
+          image: ghcr.io/alexcheng1982/docker-magento2:2.4.6-p3
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -e
+
+              # Skip if already installed
+              if [ -f /mnt/app-etc/env.php ] && grep -q "install_date" /mnt/app-etc/env.php 2>/dev/null; then
+                echo "Magento already installed. Skipping."
+                exit 0
+              fi
+
+              # Copy original app/etc from image to PVC
+              echo "=== Copying app/etc files to PVC ==="
+              cp -a /var/www/html/app/etc/. /mnt/app-etc/
+
+              # Symlink so setup:install writes env.php to PVC
+              rm -rf /var/www/html/app/etc
+              ln -s /mnt/app-etc /var/www/html/app/etc
+
+              echo "=== Running Magento setup:install ==="
+              php /var/www/html/bin/magento setup:install \
+                --base-url="https://gadgetbekassidoarjo.my.id/" \
+                --db-host="$DB_HOST" \
+                --db-name="$DB_NAME" \
+                --db-user="$DB_USER" \
+                --db-password="$DB_PASSWORD" \
+                --admin-firstname="$ADMIN_FIRSTNAME" \
+                --admin-lastname="$ADMIN_LASTNAME" \
+                --admin-email="$ADMIN_EMAIL" \
+                --admin-user="$ADMIN_USER" \
+                --admin-password="$ADMIN_PASSWORD" \
+                --backend-frontname="$ADMIN_PATH" \
+                --search-engine="opensearch" \
+                --opensearch-host="$OPENSEARCH_HOST" \
+                --opensearch-port="$OPENSEARCH_PORT" \
+                --session-save="redis" \
+                --session-save-redis-host="$REDIS_HOST" \
+                --session-save-redis-port="$REDIS_PORT" \
+                --session-save-redis-db=0 \
+                --cache-backend="redis" \
+                --cache-backend-redis-server="$REDIS_HOST" \
+                --cache-backend-redis-port="$REDIS_PORT" \
+                --cache-backend-redis-db=1 \
+                --use-rewrites=1 \
+                --language="en_US" \
+                --currency="USD" \
+                --timezone="Asia/Jakarta"
+              
+              # Prevent ERR_TOO_MANY_REDIRECTS when behind Cloudflare proxy
+              echo "=== Applying Cloudflare SSL Proxy Fixes ==="
+              php /var/www/html/bin/magento config:set web/url/redirect_to_base 0
+              sed -i "2i \$_SERVER['HTTPS'] = 'on';" /mnt/app-etc/env.php
+
+              echo "=== setup:install completed ==="
+          env:
+            - name: DB_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: magento-config
+                  key: DB_HOST
+            - name: DB_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: magento-config
+                  key: DB_NAME
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: magento-secrets
+                  key: DB_USER
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: magento-secrets
+                  key: DB_PASSWORD
+            - name: ADMIN_FIRSTNAME
+              valueFrom:
+                secretKeyRef:
+                  name: magento-secrets
+                  key: MAGENTO_ADMIN_FIRSTNAME
+            - name: ADMIN_LASTNAME
+              valueFrom:
+                secretKeyRef:
+                  name: magento-secrets
+                  key: MAGENTO_ADMIN_LASTNAME
+            - name: ADMIN_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: magento-secrets
+                  key: MAGENTO_ADMIN_EMAIL
+            - name: ADMIN_USER
+              valueFrom:
+                secretKeyRef:
+                  name: magento-secrets
+                  key: MAGENTO_ADMIN_USER
+            - name: ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: magento-secrets
+                  key: MAGENTO_ADMIN_PASSWORD
+            - name: ADMIN_PATH
+              valueFrom:
+                configMapKeyRef:
+                  name: magento-config
+                  key: MAGENTO_ADMIN_PATH
+            - name: OPENSEARCH_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: magento-config
+                  key: OPENSEARCH_HOST
+            - name: OPENSEARCH_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: magento-config
+                  key: OPENSEARCH_PORT
+            - name: REDIS_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: magento-config
+                  key: REDIS_HOST
+            - name: REDIS_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: magento-config
+                  key: REDIS_PORT
+          volumeMounts:
+            - name: magento-app-etc
+              mountPath: /mnt/app-etc
+            - name: magento-media
+              mountPath: /var/www/html/pub/media
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m"
+              memory: "1280Mi"
       containers:
         - name: magento
           image: ghcr.io/alexcheng1982/docker-magento2:2.4.6-p3
@@ -28,87 +169,11 @@ spec:
             - containerPort: 443
               name: https
           env:
-            # App mode
-            - name: MAGENTO_MODE
-              valueFrom:
-                configMapKeyRef:
-                  name: magento-config
-                  key: MAGE_MODE
             - name: MAGENTO_HOST
               value: "gadgetbekassidoarjo.my.id"
             - name: MAGENTO_ENABLE_HTTPS
               value: "no"
             - name: MAGENTO_ENABLE_ADMIN_HTTPS
-              value: "no"
-            - name: MAGENTO_ADMIN_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: magento-config
-                  key: MAGENTO_ADMIN_PATH
-            # Admin user
-            - name: MAGENTO_ADMIN_USERNAME
-              valueFrom:
-                secretKeyRef:
-                  name: magento-secrets
-                  key: MAGENTO_ADMIN_USER
-            - name: MAGENTO_ADMIN_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: magento-secrets
-                  key: MAGENTO_ADMIN_PASSWORD
-            - name: MAGENTO_ADMIN_EMAIL
-              valueFrom:
-                secretKeyRef:
-                  name: magento-secrets
-                  key: MAGENTO_ADMIN_EMAIL
-            - name: MAGENTO_ADMIN_FIRSTNAME
-              valueFrom:
-                secretKeyRef:
-                  name: magento-secrets
-                  key: MAGENTO_ADMIN_FIRSTNAME
-            - name: MAGENTO_ADMIN_LASTNAME
-              valueFrom:
-                secretKeyRef:
-                  name: magento-secrets
-                  key: MAGENTO_ADMIN_LASTNAME
-            # DB connection
-            - name: MAGENTO_DATABASE_HOST
-              valueFrom:
-                configMapKeyRef:
-                  name: magento-config
-                  key: DB_HOST
-            - name: MAGENTO_DATABASE_PORT_NUMBER
-              valueFrom:
-                configMapKeyRef:
-                  name: magento-config
-                  key: DB_PORT
-            - name: MAGENTO_DATABASE_NAME
-              valueFrom:
-                configMapKeyRef:
-                  name: magento-config
-                  key: DB_NAME
-            - name: MAGENTO_DATABASE_USER
-              valueFrom:
-                secretKeyRef:
-                  name: magento-secrets
-                  key: DB_USER
-            - name: MAGENTO_DATABASE_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: magento-secrets
-                  key: DB_PASSWORD
-            # OpenSearch connection
-            - name: MAGENTO_ELASTICSEARCH_HOST
-              valueFrom:
-                configMapKeyRef:
-                  name: magento-config
-                  key: OPENSEARCH_HOST
-            - name: MAGENTO_ELASTICSEARCH_PORT_NUMBER
-              valueFrom:
-                configMapKeyRef:
-                  name: magento-config
-                  key: OPENSEARCH_PORT
-            - name: MAGENTO_ELASTICSEARCH_ENABLE_SECURITY
               value: "no"
           resources:
             requests:
@@ -132,9 +197,14 @@ spec:
             timeoutSeconds: 5
             failureThreshold: 6
           volumeMounts:
+            - name: magento-app-etc
+              mountPath: /var/www/html/app/etc
             - name: magento-media
               mountPath: /var/www/html/pub/media
       volumes:
+        - name: magento-app-etc
+          persistentVolumeClaim:
+            claimName: magento-app-etc-pvc
         - name: magento-media
           persistentVolumeClaim:
             claimName: magento-media-pvc
